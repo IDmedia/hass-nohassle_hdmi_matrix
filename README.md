@@ -52,6 +52,6 @@ media_player:
 Change input by using `hdmi_matrix_set_zone`:
 ```
 media_player.hdmi_matrix_set_zone
-entity_id: media_player.second_tv_source
-source: Kodi
+entity_id: media_player.main_tv_source
+source: Xbox 360
 ```
