@@ -1,8 +1,11 @@
 {
   "domain": "nohassle_hdmi_matrix",
   "name": "No Hassle AV HDMI Matrix",
-  "documentation": "",
+  "documentation": "https://github.com/IDmedia/hass-nohassle_hdmi_matrix",
   "requirements": [],
   "dependencies": [],
-  "codeowners": []
+  "version": "1.0.0",
+  "codeowners": [
+    "@IDmedia"
+  ]
 }
