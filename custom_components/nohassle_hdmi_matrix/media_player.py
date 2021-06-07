@@ -1,4 +1,5 @@
 """Support for interfacing with HDMI Matrix."""
+import json
 import logging
 import datetime
 import urllib.request
@@ -58,31 +59,51 @@ PLATFORM_SCHEMA = vol.All(
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the HDMI Matrix platform."""
+    
     if DATA_HDMIMATRIX not in hass.data:
         hass.data[DATA_HDMIMATRIX] = {}
 
     host = config.get(CONF_HOST)
 
+    api_mode = None
     connection = None
     if host is not None:
-        try:
-            with urllib.request.urlopen('http://{0}/AutoGetAllData'.format(host)) as response:
-                response = response.read().decode('utf-8')
-                inputs = response[-16:-1].split('&')
+
+        # Firmware mode 1
+        if not api_mode:
+            try:
+                with urllib.request.urlopen(f'http://{host}/AutoGetAllData', timeout=4) as response:
+                    response = response.read().decode('utf-8')
+                    inputs = response[-16:-1].split('&')
+                    
+                api_mode = 1
+            except:
+                pass
+
+        # Firmware mode 2
+        if not api_mode:
+            try:
+                with urllib.request.urlopen(f'http://{host}/cgi-bin/query', timeout=4) as response:
+                    response = response.read().decode('utf-8')
+                    inputs = response[-16:-1].split('&')
             
+                api_mode = 2
+            except:
+                pass
+        
+        if api_mode:
             connection = host
-        except:
-            _LOGGER.error("Error connecting to the HDMI Matrix")
-            #return
+        else:
+            _LOGGER.error('Error connecting to the HDMI Matrix')
 
     sources = {source_id: extra[CONF_NAME] for source_id, extra
                in config[CONF_SOURCES].items()}
 
     devices = []
     for zone_id, extra in config[CONF_ZONES].items():
-        _LOGGER.info("Adding zone %d - %s", zone_id, extra[CONF_NAME])
-        unique_id = "{}-{}".format(connection, zone_id)
-        device = HDMIMatrixZone(connection, sources, zone_id, extra[CONF_NAME])
+        _LOGGER.info('Adding zone %d - %s', zone_id, extra[CONF_NAME])
+        unique_id = f'{connection}-{zone_id}'
+        device = HDMIMatrixZone(connection, api_mode, sources, zone_id, extra[CONF_NAME])
         hass.data[DATA_HDMIMATRIX][unique_id] = device
         devices.append(device)
 
@@ -109,9 +130,10 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class HDMIMatrixZone(MediaPlayerEntity):
     """Representation of a HDMI matrix zone."""
 
-    def __init__(self, hdmi_host, sources, zone_id, zone_name):
+    def __init__(self, hdmi_host, api_mode, sources, zone_id, zone_name):
         """Initialize new zone."""
         self._hdmi_host = hdmi_host
+        self.api_mode = api_mode
         # dict source_id -> source name
         self._source_id_name = sources
         # dict source name -> source_id
@@ -126,16 +148,28 @@ class HDMIMatrixZone(MediaPlayerEntity):
 
     def update(self):
         """Retrieve latest state."""
-        try:
-            with urllib.request.urlopen('http://{0}/AutoGetAllData'.format(self._hdmi_host), timeout=10) as response:
-                response = response.read().decode('utf-8')
-                inputs = response[-16:-1].split('&')
-                states = [(int(i) + 1) for i in inputs]
-                state = states[self._zone_id - 1]
-        except:
-            self._state = STATE_OFF
-            state = None
-            
+        if self.api_mode == 1:
+            try:
+                with urllib.request.urlopen(f'http://{self._hdmi_host}/AutoGetAllData', timeout=10) as response:
+                    response = response.read().decode('utf-8')
+                    inputs = response[-16:-1].split('&')
+                    states = [(int(i) + 1) for i in inputs]
+                    state = states[self._zone_id - 1]
+            except:
+                self._state = STATE_OFF
+                state = None
+
+        if self.api_mode == 2:
+            try:
+                with urllib.request.urlopen(f'http://{self._hdmi_host}/cgi-bin/query', timeout=10) as response:
+                    response = response.read().decode('utf-8')
+                    r = json.loads(response)
+                    states = r['SwitchStatus']
+                    state = states[zone_id - 1]
+            except:
+                self._state = STATE_OFF
+                state = None
+                
         if not state:
             return
 
@@ -181,8 +215,17 @@ class HDMIMatrixZone(MediaPlayerEntity):
         if source not in self._source_name_id:
             return
         idx = self._source_name_id[source]
-        _LOGGER.debug("Setting zone %d source to %s", self._zone_id, idx)
-        try:
-            urllib.request.urlopen('http://{0}/@PORT{1}={2}.0'.format(self._hdmi_host, self._zone_id, idx), timeout=10)
-        except:
-            pass
+        _LOGGER.debug('Setting zone %d source to %s', self._zone_id, idx)
+            
+        if self.api_mode == 1:
+            try:
+                urllib.request.urlopen(f'http://{self._hdmi_host}/@PORT{self._zone_id}={idx}.0', timeout=10)
+            except:
+                pass
+        
+        if self.api_mode == 2:
+            try:
+                flag = format(0xfb - (idx + self._zone_id), 'x')
+                urllib.request.urlopen(f'http://{self._hdmi_host}/cgi-bin/submit?cmd=hex(a5,5b,02,03,{idx:02},00,{self._zone_id:02},00,00,00,00,00,{flag})', timeout=10)
+            except:
+                pass
