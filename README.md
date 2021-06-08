@@ -65,10 +65,7 @@ data:
 ```
 
 Lovelace example:
-
-Replace with your media_player-entity and source name.
-
-Requires the awesome [button-card](https://github.com/custom-cards/button-card)
+Replace with your media_player-entity and source name. Requires the awesome [button-card](https://github.com/custom-cards/button-card)
 ```
   - type: grid
     columns: 2
