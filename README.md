@@ -55,3 +55,70 @@ media_player.hdmi_matrix_set_zone
 entity_id: media_player.main_tv_source
 source: Xbox 360
 ```
+
+Call it from the "Developer Tools->Service" tab (or any script):
+```
+service: media_player.hdmi_matrix_set_zone
+data:
+  entity_id: media_player.main_tv_source
+  source: Kodi
+```
+
+Lovelace example (replace with your media_player-entity and source name):
+```
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: custom:button-card
+        entity: media_player.main_tv_source
+        icon: mdi:laptop
+        name: PC A
+        color_type: card
+        color: var(--disabled-text-color)
+        styles:
+          card:
+            - height: 60px
+            - color: white
+        tap_action:
+          action: call-service
+          service: media_player.hdmi_matrix_set_zone
+          service_data:
+            entity_id: media_player.main_tv_source
+            source: PC A
+        state:
+          - operator: template
+            value: >
+              [[[
+                return states['media_player.main_tv_source'].attributes.source == 'PC A'
+              ]]]
+            color: rgb(27, 70, 99)
+          - operator: default
+            color: rgb(200, 200, 200)
+
+      - type: custom:button-card
+        entity: media_player.main_tv_source
+        icon: mdi:laptop
+        name: PC B
+        color_type: card
+        color: var(--disabled-text-color)
+        styles:
+          card:
+            - height: 60px
+            - color: white
+        tap_action:
+          action: call-service
+          service: media_player.hdmi_matrix_set_zone
+          service_data:
+            entity_id: media_player.main_tv_source
+            source: PC B
+        state:
+          - operator: template
+            value: >
+              [[[
+                return states['media_player.main_tv_source'].attributes.source == 'PC B'
+              ]]]
+            color: rgb(27, 70, 99)
+          - operator: default
+            color: rgb(200, 200, 200)
+```
