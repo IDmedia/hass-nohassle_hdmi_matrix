@@ -165,7 +165,7 @@ class HDMIMatrixZone(MediaPlayerEntity):
                     response = response.read().decode('utf-8')
                     r = json.loads(response)
                     states = r['SwitchStatus']
-                    state = states[zone_id - 1]
+                    state = states[self._zone_id - 1]
             except:
                 self._state = STATE_OFF
                 state = None
