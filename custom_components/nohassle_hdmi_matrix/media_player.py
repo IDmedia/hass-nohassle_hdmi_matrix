@@ -72,22 +72,18 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         # Firmware mode 1
         if not api_mode:
             try:
-                with urllib.request.urlopen(f'http://{host}/AutoGetAllData', timeout=4) as response:
-                    response = response.read().decode('utf-8')
-                    inputs = response[-16:-1].split('&')
-                if len(inputs) > 1:    
-                    api_mode = 1
+                with urllib.request.urlopen(f'http://{host}/AutoGetAllData', timeout=5) as r:
+                    if r.getcode() == 200:  
+                        api_mode = 1
             except:
                 pass
 
         # Firmware mode 2
         if not api_mode:
             try:
-                with urllib.request.urlopen(f'http://{host}/cgi-bin/query', timeout=4) as response:
-                    response = response.read().decode('utf-8')
-                    inputs = response[-16:-1].split('&')
-                if len(inputs) > 1:
-                    api_mode = 2
+                with urllib.request.urlopen(f'http://{host}/cgi-bin/submit?cmd=getpage2!', timeout=5) as r:
+                    if r.getcode() == 200:  
+                        api_mode = 2
             except:
                 pass
         
@@ -150,7 +146,7 @@ class HDMIMatrixZone(MediaPlayerEntity):
         """Retrieve latest state."""
         if self._api_mode == 1:
             try:
-                with urllib.request.urlopen(f'http://{self._hdmi_host}/AutoGetAllData', timeout=10) as response:
+                with urllib.request.urlopen(f'http://{self._hdmi_host}/AutoGetAllData', timeout=5) as response:
                     response = response.read().decode('utf-8')
                     inputs = response[-16:-1].split('&')
                     states = [(int(i) + 1) for i in inputs]
@@ -161,7 +157,8 @@ class HDMIMatrixZone(MediaPlayerEntity):
 
         if self._api_mode == 2:
             try:
-                with urllib.request.urlopen(f'http://{self._hdmi_host}/cgi-bin/query', timeout=10) as response:
+                urllib.request.urlopen(f'http://{self._hdmi_host}/cgi-bin/submit?cmd=getpage2!', timeout=5)
+                with urllib.request.urlopen(f'http://{self._hdmi_host}/cgi-bin/query', timeout=5) as response:
                     response = response.read().decode('utf-8')
                     r = json.loads(response)
                     states = r['SwitchStatus']
@@ -219,13 +216,13 @@ class HDMIMatrixZone(MediaPlayerEntity):
             
         if self._api_mode == 1:
             try:
-                urllib.request.urlopen(f'http://{self._hdmi_host}/@PORT{self._zone_id}={idx}.0', timeout=10)
+                urllib.request.urlopen(f'http://{self._hdmi_host}/@PORT{self._zone_id}={idx}.0', timeout=5)
             except:
                 pass
         
         if self._api_mode == 2:
             try:
                 flag = format(0xfb - (idx + self._zone_id), 'x')
-                urllib.request.urlopen(f'http://{self._hdmi_host}/cgi-bin/submit?cmd=hex(a5,5b,02,03,{idx:02},00,{self._zone_id:02},00,00,00,00,00,{flag})', timeout=10)
+                urllib.request.urlopen(f'http://{self._hdmi_host}/cgi-bin/submit?cmd=hex(a5,5b,02,03,{idx:02},00,{self._zone_id:02},00,00,00,00,00,{flag})', timeout=5)
             except:
                 pass
